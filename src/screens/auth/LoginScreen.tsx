@@ -12,24 +12,44 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useDispatch } from 'react-redux';
 import { setError, setLoading } from '@/store/slices/authSlice';
+import { ValidationService } from '@/utils/validation';
+import { AnalyticsService } from '@/services/AnalyticsService';
 
 export function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const { authService } = useAuth();
   const dispatch = useDispatch();
+  const analytics = AnalyticsService.getInstance();
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+    // Reset errors
+    setEmailError('');
+    setPasswordError('');
+
+    // Validate inputs
+    const emailValidation = ValidationService.validateEmail(email);
+    const passwordValidation = ValidationService.validatePassword(password);
+
+    if (!emailValidation.isValid) {
+      setEmailError(emailValidation.error || '');
+      return;
+    }
+
+    if (!passwordValidation.isValid) {
+      setPasswordError(passwordValidation.error || '');
       return;
     }
 
     try {
       dispatch(setLoading(true));
       await authService.signIn(email, password);
+      analytics.trackEvent('user_login', { method: 'email' });
     } catch (error: any) {
       dispatch(setError(error.message));
+      analytics.trackError(error, 'login_failed');
       Alert.alert('Login Failed', error.message);
     }
   };
@@ -44,24 +64,30 @@ export function LoginScreen({ navigation }: any) {
         <Text style={styles.subtitle}>Collect creatures, save the planet</Text>
 
         <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            placeholderTextColor="#A8D5BA"
-          />
+          <View>
+            <TextInput
+              style={[styles.input, emailError && styles.inputError]}
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              placeholderTextColor="#A8D5BA"
+            />
+            {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
+          </View>
           
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            placeholderTextColor="#A8D5BA"
-          />
+          <View>
+            <TextInput
+              style={[styles.input, passwordError && styles.inputError]}
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              placeholderTextColor="#A8D5BA"
+            />
+            {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
+          </View>
 
           <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
             <Text style={styles.loginButtonText}>Sign In</Text>
@@ -115,6 +141,15 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#4A7C59',
+  },
+  inputError: {
+    borderColor: '#E74C3C',
+  },
+  errorText: {
+    color: '#E74C3C',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
   },
   loginButton: {
     backgroundColor: '#7ED321',
