@@ -1,0 +1,33 @@
+import React from 'react';
+import { Text, StyleSheet } from 'react-native';
+
+interface TabBarIconProps {
+  name: string;
+  focused: boolean;
+  color: string;
+  size: number;
+}
+
+const iconMap: { [key: string]: string } = {
+  'AR Camera': '📷',
+  'Collection': '🐾',
+  'Map': '🗺️',
+  'Challenges': '🏆',
+  'Profile': '👤',
+};
+
+export function TabBarIcon({ name, focused, color, size }: TabBarIconProps) {
+  const emoji = iconMap[name] || '📱';
+  
+  return (
+    <Text style={[styles.icon, { fontSize: size, opacity: focused ? 1 : 0.6 }]}>
+      {emoji}
+    </Text>
+  );
+}
+
+const styles = StyleSheet.create({
+  icon: {
+    textAlign: 'center',
+  },
+});
