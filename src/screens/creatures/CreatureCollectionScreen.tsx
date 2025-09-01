@@ -5,17 +5,22 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
-  Image,
   Dimensions,
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store';
 import { CreatureService } from '@/services/CreatureService';
 import { addToCollection } from '@/store/slices/creatureSlice';
+import { CreatureCard } from '@/components/CreatureCard';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { CreatureDetailModal } from '@/components/CreatureDetailModal';
+import { AchievementToast } from '@/components/AchievementToast';
+import { useAchievements } from '@/hooks/useAchievements';
+import { AnalyticsService } from '@/services/AnalyticsService';
 import { Creature, RarityLevel } from '@/types';
+import { COLORS } from '@/utils/constants';
 
 const { width } = Dimensions.get('window');
-const itemWidth = (width - 60) / 2;
 
 export function CreatureCollectionScreen() {
   const dispatch = useDispatch();
@@ -23,23 +28,31 @@ export function CreatureCollectionScreen() {
   const { user } = useSelector((state: RootState) => state.auth);
   const [selectedCreature, setSelectedCreature] = useState<Creature | null>(null);
   const [filter, setFilter] = useState<'all' | RarityLevel>('all');
+  const [isLoading, setIsLoading] = useState(false);
 
   const creatureService = new CreatureService();
+  const analytics = AnalyticsService.getInstance();
+  const { newAchievement, hideAchievementToast } = useAchievements();
 
   useEffect(() => {
     loadUserCreatures();
+    analytics.trackScreenView('creature_collection');
   }, [user]);
 
   const loadUserCreatures = async () => {
     if (!user) return;
 
     try {
+      setIsLoading(true);
       const creatures = await creatureService.getUserCreatures(user.uid);
       creatures.forEach(creature => {
         dispatch(addToCollection(creature));
       });
     } catch (error) {
       console.error('Error loading creatures:', error);
+      analytics.trackError(error as Error, 'creature_collection_load');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -48,39 +61,15 @@ export function CreatureCollectionScreen() {
   );
 
   const getRarityColor = (rarity: RarityLevel): string => {
-    switch (rarity) {
-      case RarityLevel.COMMON: return '#95A5A6';
-      case RarityLevel.UNCOMMON: return '#27AE60';
-      case RarityLevel.RARE: return '#3498DB';
-      case RarityLevel.EPIC: return '#9B59B6';
-      case RarityLevel.LEGENDARY: return '#F39C12';
-      default: return '#95A5A6';
-    }
+    const { RARITY_COLORS } = require('@/utils/constants');
+    return RARITY_COLORS[rarity] || RARITY_COLORS.common;
   };
 
   const renderCreatureCard = ({ item }: { item: Creature }) => (
-    <TouchableOpacity
-      style={[styles.creatureCard, { borderColor: getRarityColor(item.rarity) }]}
-      onPress={() => setSelectedCreature(item)}
-    >
-      <View style={styles.creatureImageContainer}>
-        <Text style={styles.creatureEmoji}>
-          {item.type === 'greenie' ? '🌱' : 
-           item.type === 'sparkie' ? '⚡' :
-           item.type === 'binities' ? '♻️' : '💧'}
-        </Text>
-      </View>
-      
-      <Text style={styles.creatureName} numberOfLines={1}>
-        {item.type.charAt(0).toUpperCase() + item.type.slice(1)}
-      </Text>
-      
-      <View style={[styles.rarityBadge, { backgroundColor: getRarityColor(item.rarity) }]}>
-        <Text style={styles.rarityText}>{item.rarity}</Text>
-      </View>
-      
-      <Text style={styles.levelText}>Lv. {item.evolutionLevel}</Text>
-    </TouchableOpacity>
+    <CreatureCard 
+      creature={item} 
+      onPress={setSelectedCreature}
+    />
   );
 
   const renderFilterButton = (filterValue: 'all' | RarityLevel, label: string) => (
@@ -99,6 +88,10 @@ export function CreatureCollectionScreen() {
       </Text>
     </TouchableOpacity>
   );
+
+  if (isLoading && collection.length === 0) {
+    return <LoadingSpinner message="Loading your creatures..." />;
+  }
 
   return (
     <View style={styles.container}>
@@ -137,25 +130,30 @@ export function CreatureCollectionScreen() {
         }
       />
 
-      {/* Creature Detail Modal would go here */}
-      {selectedCreature && (
-        <View style={styles.modal}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {selectedCreature.type.charAt(0).toUpperCase() + selectedCreature.type.slice(1)}
-            </Text>
-            <Text style={styles.modalBackstory}>
-              {selectedCreature.backstory}
-            </Text>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setSelectedCreature(null)}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
+      {/* Loading Overlay */}
+      {isLoading && collection.length > 0 && (
+        <View style={styles.loadingOverlay}>
+          <LoadingSpinner message="Loading your creatures..." />
         </View>
       )}
+
+      {/* Creature Detail Modal */}
+      <CreatureDetailModal
+        creature={selectedCreature}
+        visible={!!selectedCreature}
+        onClose={() => setSelectedCreature(null)}
+        onEvolve={(creature) => {
+          analytics.trackCreatureEvolved(creature.type, creature.evolutionLevel, creature.evolutionLevel + 1);
+          setSelectedCreature(null);
+        }}
+      />
+
+      {/* Achievement Toast */}
+      <AchievementToast
+        achievement={newAchievement}
+        visible={!!newAchievement}
+        onHide={hideAchievementToast}
+      />
     </View>
   );
 }
@@ -163,7 +161,7 @@ export function CreatureCollectionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1B4332',
+    backgroundColor: COLORS.background,
   },
   header: {
     padding: 20,
@@ -172,12 +170,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#7ED321',
+    color: COLORS.primary,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 16,
-    color: '#A8D5BA',
+    color: COLORS.textSecondary,
   },
   filterContainer: {
     flexDirection: 'row',
@@ -190,70 +188,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: '#2D5A27',
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: '#4A7C59',
+    borderColor: COLORS.border,
   },
   filterButtonActive: {
-    backgroundColor: '#7ED321',
-    borderColor: '#7ED321',
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   filterButtonText: {
     fontSize: 12,
-    color: '#A8D5BA',
+    color: COLORS.textSecondary,
     fontWeight: '500',
   },
   filterButtonTextActive: {
-    color: '#1B4332',
+    color: COLORS.background,
   },
   grid: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-  },
-  creatureCard: {
-    width: itemWidth,
-    backgroundColor: '#2D5A27',
-    borderRadius: 12,
-    padding: 16,
-    marginRight: 20,
-    marginBottom: 20,
-    borderWidth: 2,
-    alignItems: 'center',
-  },
-  creatureImageContainer: {
-    width: 60,
-    height: 60,
-    backgroundColor: '#4A7C59',
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  creatureEmoji: {
-    fontSize: 32,
-  },
-  creatureName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  rarityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  rarityText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    textTransform: 'uppercase',
-  },
-  levelText: {
-    fontSize: 12,
-    color: '#A8D5BA',
-    fontWeight: '500',
   },
   emptyContainer: {
     flex: 1,
@@ -263,51 +216,19 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    color: '#A8D5BA',
+    color: COLORS.textSecondary,
     fontWeight: '600',
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#6B8E6B',
+    color: COLORS.textMuted,
     textAlign: 'center',
   },
-  modal: {
+  loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(27, 67, 50, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#2D5A27',
-    borderRadius: 16,
-    padding: 24,
-    margin: 20,
-    maxWidth: 300,
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#7ED321',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  modalBackstory: {
-    fontSize: 16,
-    color: '#A8D5BA',
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 24,
-  },
-  closeButton: {
-    backgroundColor: '#7ED321',
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1B4332',
   },
 });
