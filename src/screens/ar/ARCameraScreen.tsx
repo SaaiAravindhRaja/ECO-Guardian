@@ -8,10 +8,12 @@ import {
   Dimensions,
 } from 'react-native';
 import { Camera, CameraView } from 'expo-camera';
+import { ARCreatureView } from '@/components/ARCreatureView';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store';
 import { LocationService } from '@/services/LocationService';
 import { CreatureService } from '@/services/CreatureService';
+import { CreatureSpawnManager } from '@/services/CreatureSpawnManager';
 import { spawnCreature, collectCreature } from '@/store/slices/creatureSlice';
 import { setCurrentLocation } from '@/store/slices/locationSlice';
 
@@ -27,6 +29,7 @@ export function ARCameraScreen() {
 
   const locationService = new LocationService();
   const creatureService = new CreatureService();
+  const spawnManager = new CreatureSpawnManager();
 
   useEffect(() => {
     requestPermissions();
@@ -60,18 +63,16 @@ export function ARCameraScreen() {
       
       for (const ecoLocation of nearbyLocations) {
         const isNearby = await locationService.validateCheckIn(currentLocation, ecoLocation);
-        
-        if (isNearby) {
-          const creature = await creatureService.spawnCreature(
-            ecoLocation.type,
-            currentLocation,
-            user.uid
-          );
+        if (!isNearby) continue;
+
+        const creature = await spawnManager.trySpawnForEcoLocation(
+          ecoLocation.type,
+          currentLocation,
+          user.uid
+        );
+        if (creature) {
           dispatch(spawnCreature(creature));
-          Alert.alert(
-            'Creature Found!',
-            `A ${creature.type} has appeared! Tap to collect it.`
-          );
+          Alert.alert('Creature Found!', `A ${creature.type} has appeared! Tap to collect it.`);
           break;
         }
       }
@@ -120,6 +121,10 @@ export function ARCameraScreen() {
   return (
     <View style={styles.container}>
       <CameraView style={styles.camera}>
+        <ARCreatureView
+          creatures={spawnedCreatures}
+          onCreatureTap={handleCollectCreature}
+        />
         {/* AR Overlay */}
         <View style={styles.overlay}>
           {/* Spawned creatures would be rendered here */}
