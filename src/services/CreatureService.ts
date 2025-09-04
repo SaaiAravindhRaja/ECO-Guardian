@@ -10,6 +10,15 @@ import {
 } from '@/types';
 
 export class CreatureService {
+  async spawnCreatureForTarget(
+    target: GreenPlanTarget,
+    location: Location,
+    userId: string
+  ): Promise<Creature> {
+    const creatureType = this.getCreatureTypeFromTarget(target);
+    return this.spawnCreature(this.getEcoLocationFromTarget(target), location, userId);
+  }
+
   async spawnCreature(
     ecoLocationType: EcoLocationType, 
     location: Location, 
@@ -27,13 +36,16 @@ export class CreatureService {
       evolutionLevel: 1,
       backstory: this.getCreatureBackstory(creatureType),
       visualAssets: this.getCreatureAssets(creatureType),
-      collectedAt: new Date(),
+      collectedAt: new Date() as any,
       experiencePoints: 0,
     };
 
-    // Save spawned creature to Firebase
-    const spawnRef = ref(database, `spawned_creatures/${userId}`);
-    await push(spawnRef, creature);
+    // Save spawned creature to Firebase under deterministic id
+    const spawnRef = ref(database, `spawned_creatures/${userId}/${creature.id}`);
+    await set(spawnRef, {
+      ...creature,
+      collectedAt: new Date().toISOString(),
+    });
 
     return creature;
   }
@@ -58,10 +70,14 @@ export class CreatureService {
     if (!snapshot.exists()) return [];
     
     const creaturesData = snapshot.val();
-    return Object.keys(creaturesData).map(key => ({
-      ...creaturesData[key],
-      id: key,
-    }));
+    return Object.keys(creaturesData).map(key => {
+      const raw = creaturesData[key];
+      return {
+        ...raw,
+        id: key,
+        collectedAt: raw?.collectedAt ? new Date(raw.collectedAt) : new Date(),
+      } as Creature;
+    });
   }
 
   private getCreatureTypeFromLocation(locationType: EcoLocationType): CreatureType {
@@ -95,6 +111,38 @@ export class CreatureService {
         return GreenPlanTarget.RESILIENT_FUTURE;
       default:
         return GreenPlanTarget.CITY_IN_NATURE;
+    }
+  }
+
+  private getCreatureTypeFromTarget(target: GreenPlanTarget): CreatureType {
+    switch (target) {
+      case GreenPlanTarget.CITY_IN_NATURE:
+        return CreatureType.GREENIE;
+      case GreenPlanTarget.ENERGY_RESET:
+        return CreatureType.SPARKIE;
+      case GreenPlanTarget.SUSTAINABLE_LIVING:
+        return CreatureType.BINITIES;
+      case GreenPlanTarget.RESILIENT_FUTURE:
+        return CreatureType.DRIPPIES;
+      case GreenPlanTarget.GREEN_ECONOMY:
+      default:
+        return CreatureType.GREENIE;
+    }
+  }
+
+  private getEcoLocationFromTarget(target: GreenPlanTarget): EcoLocationType {
+    switch (target) {
+      case GreenPlanTarget.CITY_IN_NATURE:
+        return EcoLocationType.NATURE_PARK;
+      case GreenPlanTarget.ENERGY_RESET:
+        return EcoLocationType.EV_CHARGING_STATION;
+      case GreenPlanTarget.SUSTAINABLE_LIVING:
+        return EcoLocationType.RECYCLING_CENTER;
+      case GreenPlanTarget.RESILIENT_FUTURE:
+        return EcoLocationType.ABC_WATERS_SITE;
+      case GreenPlanTarget.GREEN_ECONOMY:
+      default:
+        return EcoLocationType.NATURE_PARK;
     }
   }
 
