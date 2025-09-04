@@ -206,6 +206,71 @@ export interface EnvironmentalData {
   timestamp: Date;
 }
 
+// Environmental snapshot captured at spawn/collect time
+export interface EnvironmentalSnapshot extends EnvironmentalData {
+  source: 'nea_api' | 'mock' | 'cache';
+}
+
+// AR session configuration and state
+export type ARPlatform = 'arcore' | 'arkit';
+
+export interface ARSessionConfig {
+  platform: ARPlatform;
+  enablePlaneDetection: boolean;
+  enableLightEstimation: boolean;
+  enablePeopleOcclusion?: boolean;
+  worldAlignment?: 'gravity' | 'gravityAndHeading' | 'camera';
+  modelCacheLimit?: number;
+}
+
+export type ARTrackingState =
+  | 'not_available'
+  | 'limited_initializing'
+  | 'limited_excessive_motion'
+  | 'limited_insufficient_features'
+  | 'normal';
+
+// Spawn conditions and configurations
+export interface SpawnCondition {
+  minDistanceMeters?: number;
+  cooldownSeconds?: number;
+  allowedTargets?: GreenPlanTarget[];
+  requiredEnvironmental?: Partial<EnvironmentalData>;
+  maxConcurrentSpawns?: number;
+}
+
+export interface SpawnConfig {
+  baseRarityWeights: Record<RarityLevel, number>;
+  environmentalBoostFactor?: number; // 0..1, scales rarity boost under favorable conditions
+  duplicateConversion?: {
+    enabled: boolean;
+    materialId: string;
+    quantityPerDuplicate: number;
+  };
+}
+
+// Error models and retry policy
+export type ErrorCategory =
+  | 'network'
+  | 'permission'
+  | 'ar_tracking'
+  | 'location'
+  | 'data_integrity'
+  | 'unknown';
+
+export interface RetryPolicy {
+  retries: number;
+  backoffMs: number;
+  backoffMultiplier?: number; // exponential if >1
+}
+
+export interface ARError {
+  category: ErrorCategory;
+  code: string;
+  message: string;
+  retryPolicy?: RetryPolicy;
+}
+
 export enum SocialPlatform {
   INSTAGRAM = 'instagram',
   FACEBOOK = 'facebook',
