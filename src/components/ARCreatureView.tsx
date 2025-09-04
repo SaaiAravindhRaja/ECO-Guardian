@@ -3,6 +3,9 @@ import { Platform, View, StyleSheet, Text, TouchableOpacity, Dimensions } from '
 import type { Creature } from '@/types';
 import { ARSessionManager } from '@/services/ARSessionManager';
 import { AnalyticsService } from '@/services/AnalyticsService';
+import { useDispatch } from 'react-redux';
+import { setTracking } from '@/store/slices/arSlice';
+import { ARModelLoader } from '@/services/ARModelLoader';
 
 type ARCreatureViewProps = {
   creatures: Creature[];
@@ -15,6 +18,8 @@ export function ARCreatureView({ creatures, onCreatureTap }: ARCreatureViewProps
   const arRef = useRef<any>(null);
   const session = useRef(new ARSessionManager());
   const analytics = useRef(AnalyticsService.getInstance());
+  const modelLoader = useRef(new ARModelLoader());
+  const dispatch = useDispatch();
   const [tracking, setTracking] = useState('not_available');
   const [tappedId, setTappedId] = useState<string | null>(null);
   const { width, height } = Dimensions.get('window');
@@ -39,6 +44,10 @@ export function ARCreatureView({ creatures, onCreatureTap }: ARCreatureViewProps
   useEffect(() => {
     // In a full implementation, we would load 3D assets (GLB) into the AR scene
     // and position them at anchors/planes. Here we prepare the structure.
+    // Hint model preloading to reduce hitches
+    creatures.slice(0, 3).forEach(c => {
+      void modelLoader.current.loadModel(c.visualAssets.modelUrl).catch(() => {});
+    });
   }, [creatures]);
 
   // Lazy require to avoid metro resolution issues on platforms
@@ -55,6 +64,7 @@ export function ARCreatureView({ creatures, onCreatureTap }: ARCreatureViewProps
           session.current.setTrackingState('normal');
           analytics.current.trackARSession('plane_detected');
           setTracking('normal');
+          dispatch(setTracking('normal' as any));
         }}
         onTap={(event: any) => {
           // Basic hit: map any tap to nearest creature for now
@@ -65,6 +75,7 @@ export function ARCreatureView({ creatures, onCreatureTap }: ARCreatureViewProps
           session.current.setTrackingState('limited_initializing');
           analytics.current.trackARSession('tracking_limited');
           setTracking('limited_initializing');
+          dispatch(setTracking('limited_initializing' as any));
         }}
       />
     );
@@ -81,6 +92,7 @@ export function ARCreatureView({ creatures, onCreatureTap }: ARCreatureViewProps
           session.current.setTrackingState('normal');
           analytics.current.trackARSession('plane_detected');
           setTracking('normal');
+          dispatch(setTracking('normal' as any));
         }}
         onTap={() => {
           const nearest = creatures[0];
