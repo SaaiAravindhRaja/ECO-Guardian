@@ -12,6 +12,12 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store';
 import { Challenge, ChallengeType, GreenPlanTarget } from '@/types';
 import { setActiveChallenges, completeChallenge } from '@/store/slices/challengeSlice';
+import { useNavigation } from '@react-navigation/native';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
+import { CreatureService } from '@/services/CreatureService';
+import { LocationService } from '@/services/LocationService';
+import { spawnCreature } from '@/store/slices/creatureSlice';
 
 // Mock challenges data
 const mockChallenges: Challenge[] = [
@@ -69,9 +75,11 @@ const mockChallenges: Challenge[] = [
 
 export function ChallengesScreen() {
   const dispatch = useDispatch();
+  const navigation = useNavigation<any>();
   const { activeChallenges, completedChallenges } = useSelector(
     (state: RootState) => state.challenges
   );
+  const { user } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
     // Load challenges - in production, this would fetch from Firebase
@@ -100,8 +108,31 @@ export function ChallengesScreen() {
     }
   };
 
-  const handleCompleteChallenge = (challengeId: string) => {
+  const handleCompleteChallenge = async (challengeId: string) => {
     dispatch(completeChallenge(challengeId));
+    try {
+      // Find challenge to infer Green Plan target
+      const challenge = activeChallenges.find(c => c.id === challengeId) || completedChallenges.find(c => c.id === challengeId);
+      if (!challenge) return;
+      if (!user) return;
+
+      const creatureService = new CreatureService();
+      const locationService = new LocationService();
+      const currentLocation = await locationService.getCurrentLocation();
+
+      // Spawn creature based on challenge's Green Plan target
+      const creature = await creatureService.spawnCreatureForTarget(
+        challenge.greenPlanTarget,
+        currentLocation,
+        user.uid
+      );
+      dispatch(spawnCreature(creature));
+
+      // Navigate to AR Camera to collect
+      navigation.navigate('AR Camera');
+    } catch (error) {
+      console.error('Error spawning creature after challenge:', error);
+    }
   };
 
   const renderChallengeCard = ({ item }: { item: Challenge }) => {
