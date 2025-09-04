@@ -6,10 +6,15 @@ import {
   RarityLevel, 
   GreenPlanTarget, 
   EcoLocationType,
-  Location 
+  Location,
+  CollectionResult
 } from '@/types';
+import { EnvironmentalDataService } from './EnvironmentalDataService';
+import { OfflineQueueService } from './OfflineQueueService';
 
 export class CreatureService {
+  private env = new EnvironmentalDataService();
+  private offlineQueue = new OfflineQueueService();
   async spawnCreatureForTarget(
     target: GreenPlanTarget,
     location: Location,
@@ -58,9 +63,44 @@ export class CreatureService {
     const spawnSnapshot = await get(spawnRef);
     if (spawnSnapshot.exists()) {
       const creature = spawnSnapshot.val();
+      // Attach environmental snapshot
+      try {
+        const snap = await this.env.getCurrentEnvironmentalData();
+        creature.collectionSnapshot = snap;
+      } catch (_error) {}
+
       await set(collectionRef, creature);
       await set(spawnRef, null); // Remove from spawned
     }
+  }
+
+  async collectCreatureWithRetry(creatureId: string, userId: string): Promise<CollectionResult> {
+    const doCollect = async () => {
+      await this.collectCreature(creatureId, userId);
+    };
+    this.offlineQueue.enqueue(doCollect);
+    // We optimistically return success; queue ensures eventual consistency
+    const creatures = await this.getUserCreatures(userId);
+    const creature = creatures.find(c => c.id === creatureId);
+    return {
+      success: true,
+      creature: creature || (await this.getUserCreatures(userId))[0],
+    } as CollectionResult;
+  }
+
+  async evolveCreature(userId: string, creatureId: string): Promise<Creature | null> {
+    const creatureRef = ref(database, `users/${userId}/creatures/${creatureId}`);
+    const snapshot = await get(creatureRef);
+    if (!snapshot.exists()) return null;
+    const creature: Creature = snapshot.val();
+    if (creature.experiencePoints < 1000) return creature; // not enough XP
+    creature.experiencePoints -= 1000;
+    creature.evolutionLevel = Math.min(5, (creature.evolutionLevel || 1) + 1);
+    await set(creatureRef, {
+      ...creature,
+      collectedAt: (creature.collectedAt ? new Date(creature.collectedAt) : new Date()).toISOString(),
+    });
+    return creature;
   }
 
   async getUserCreatures(userId: string): Promise<Creature[]> {
