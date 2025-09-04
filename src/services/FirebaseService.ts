@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
+import { initializeAuth, getAuth, getReactNativePersistence, Auth } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getDatabase, Database } from 'firebase/database';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getFunctions, Functions } from 'firebase/functions';
@@ -23,7 +24,14 @@ class FirebaseService {
 
   constructor() {
     this.app = initializeApp(firebaseConfig);
-    this.auth = getAuth(this.app);
+    // Ensure React Native persistence and register auth before first getAuth() usage
+    try {
+      this.auth = initializeAuth(this.app, {
+        persistence: getReactNativePersistence(AsyncStorage),
+      });
+    } catch {
+      this.auth = getAuth(this.app);
+    }
     this.database = getDatabase(this.app);
     this.storage = getStorage(this.app);
     this.functions = getFunctions(this.app);

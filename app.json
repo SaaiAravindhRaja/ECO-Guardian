@@ -4,13 +4,9 @@
     "slug": "eco-guardian-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    // TODO: add icon PNG and update path
-    "icon": "./assets/icon.png",
+    
     "userInterfaceStyle": "light",
     "splash": {
-      // TODO: add splash PNG and update path
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
       "backgroundColor": "#1B4332"
     },
     "assetBundlePatterns": [
@@ -27,8 +23,6 @@
     },
     "android": {
       "adaptiveIcon": {
-        // TODO: add adaptive icon and update path
-        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1B4332"
       },
       "package": "com.ecoguardian.app",
@@ -40,10 +34,7 @@
         "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
-    "web": {
-      // TODO: add favicon and update path
-      "favicon": "./assets/favicon.png"
-    },
+    "web": {},
     "plugins": [
       "expo-camera",
       "expo-location",
