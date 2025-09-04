@@ -46,6 +46,7 @@ export interface Creature {
   visualAssets: ARAssets;
   collectedAt: Date;
   experiencePoints: number;
+  collectionSnapshot?: EnvironmentalSnapshot;
 }
 
 export interface ARAssets {
@@ -181,6 +182,13 @@ export interface EvolutionMaterial {
   type: string;
   quantity: number;
   iconUrl: string;
+}
+
+export interface CollectionResult {
+  success: boolean;
+  creature: Creature;
+  duplicateConverted?: boolean;
+  materialsGranted?: EvolutionMaterial[];
 }
 
 export interface ARPhoto {
