@@ -18,6 +18,8 @@ import { spawnCreature, collectCreature } from '@/store/slices/creatureSlice';
 import { setCurrentLocation } from '@/store/slices/locationSlice';
 import { CreatureCollectionManager } from '@/services/CreatureCollectionManager';
 import { AnalyticsService } from '@/services/AnalyticsService';
+import { PerformanceMonitor } from '@/services/PerformanceMonitor';
+import { ErrorRecoveryService } from '@/services/ErrorRecoveryService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -34,6 +36,8 @@ export function ARCameraScreen() {
   const spawnManager = new CreatureSpawnManager();
   const collectionManager = new CreatureCollectionManager();
   const analytics = AnalyticsService.getInstance();
+  const perf = new PerformanceMonitor();
+  const recovery = new ErrorRecoveryService();
 
   useEffect(() => {
     requestPermissions();
@@ -63,6 +67,7 @@ export function ARCameraScreen() {
 
     setIsScanning(true);
     try {
+      perf.mark('scan_start');
       const nearbyLocations = await locationService.getNearbyEcoLocations(currentLocation);
       
       for (const ecoLocation of nearbyLocations) {
@@ -85,6 +90,9 @@ export function ARCameraScreen() {
       console.error('Error scanning for creatures:', error);
       Alert.alert('Error', 'Failed to scan for creatures');
     } finally {
+      perf.mark('scan_end');
+      const elapsed = perf.measure('scan_start', 'scan_end') || 0;
+      analytics.trackPerformance('scan_time_ms', Math.round(elapsed), 'ms');
       setIsScanning(false);
     }
   };
