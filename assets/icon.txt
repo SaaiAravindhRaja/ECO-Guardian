@@ -1,0 +1,2 @@
+Placeholder for icon.png (provide a 1024x1024 PNG at this path)
+

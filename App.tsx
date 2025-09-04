@@ -5,6 +5,8 @@ import { StatusBar } from 'expo-status-bar';
 import { store } from '@/store';
 import { AppNavigator } from '@/navigation/AppNavigator';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { UserProvider } from '@/contexts/UserContext';
+import { CreatureProvider } from '@/contexts/CreatureContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { NetworkStatus } from '@/components/NetworkStatus';
 
@@ -14,9 +16,13 @@ export default function App() {
       <Provider store={store}>
         <AuthProvider>
           <NavigationContainer>
-            <StatusBar style="light" backgroundColor="#1B4332" />
-            <AppNavigator />
-            <NetworkStatus />
+            <UserProvider>
+              <CreatureProvider>
+                <StatusBar style="light" backgroundColor="#1B4332" />
+                <AppNavigator />
+                <NetworkStatus />
+              </CreatureProvider>
+            </UserProvider>
           </NavigationContainer>
         </AuthProvider>
       </Provider>
