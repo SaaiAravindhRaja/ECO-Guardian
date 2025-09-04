@@ -16,6 +16,8 @@ import { CreatureService } from '@/services/CreatureService';
 import { CreatureSpawnManager } from '@/services/CreatureSpawnManager';
 import { spawnCreature, collectCreature } from '@/store/slices/creatureSlice';
 import { setCurrentLocation } from '@/store/slices/locationSlice';
+import { CreatureCollectionManager } from '@/services/CreatureCollectionManager';
+import { AnalyticsService } from '@/services/AnalyticsService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -30,6 +32,8 @@ export function ARCameraScreen() {
   const locationService = new LocationService();
   const creatureService = new CreatureService();
   const spawnManager = new CreatureSpawnManager();
+  const collectionManager = new CreatureCollectionManager();
+  const analytics = AnalyticsService.getInstance();
 
   useEffect(() => {
     requestPermissions();
@@ -72,6 +76,7 @@ export function ARCameraScreen() {
         );
         if (creature) {
           dispatch(spawnCreature(creature));
+          analytics.trackCreatureSpawn(creature.type, creature.rarity);
           Alert.alert('Creature Found!', `A ${creature.type} has appeared! Tap to collect it.`);
           break;
         }
@@ -88,8 +93,11 @@ export function ARCameraScreen() {
     if (!user) return;
 
     try {
-      await creatureService.collectCreature(creatureId, user.uid);
+      await collectionManager.enrichAndCollect(creatureId, user.uid);
       dispatch(collectCreature(creatureId));
+      // Best-effort analytics based on found creature in state
+      const c = spawnedCreatures.find(c => c.id === creatureId) || null;
+      if (c) analytics.trackCreatureCollect(c.type, c.rarity);
       Alert.alert('Success!', 'Creature collected successfully!');
     } catch (error) {
       console.error('Error collecting creature:', error);
