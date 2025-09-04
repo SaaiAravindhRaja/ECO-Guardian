@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { Creature } from '@/types';
 import { COLORS, CREATURE_EMOJIS, RARITY_COLORS, GREEN_PLAN_ICONS } from '@/utils/constants';
+import { GreenPlanService } from '@/services/GreenPlanService';
+import { SocialSharingService } from '@/services/SocialSharingService';
 
 const { width } = Dimensions.get('window');
 
@@ -31,6 +33,8 @@ export function CreatureDetailModal({
   const rarityColor = RARITY_COLORS[creature.rarity] || RARITY_COLORS.common;
   const creatureEmoji = CREATURE_EMOJIS[creature.type as keyof typeof CREATURE_EMOJIS] || '🐾';
   const greenPlanIcon = GREEN_PLAN_ICONS[creature.greenPlanTarget] || '🌱';
+  const greenPlanService = new GreenPlanService();
+  const sharing = new SocialSharingService();
 
   const canEvolve = creature.experiencePoints >= 1000 && creature.evolutionLevel < 5;
 
@@ -104,6 +108,9 @@ export function CreatureDetailModal({
                 {creature.greenPlanTarget.replace('_', ' ').toUpperCase()}
               </Text>
             </View>
+            <Text style={styles.greenPlanDescription}>
+              {greenPlanService.mapTargetToEducation(creature.greenPlanTarget)}
+            </Text>
           </View>
 
           {/* Collection Info */}
@@ -126,6 +133,25 @@ export function CreatureDetailModal({
               <Text style={styles.evolveButtonText}>🌟 Evolve Creature</Text>
             </TouchableOpacity>
           )}
+
+          {/* Share Button */}
+          <TouchableOpacity 
+            style={styles.evolveButton}
+            onPress={async () => {
+              try {
+                await sharing.sharePhoto({
+                  id: `share_${creature.id}`,
+                  imageData: creature.visualAssets.thumbnailUrl,
+                  creature,
+                  location: creature.spawnLocation,
+                  timestamp: new Date(),
+                  metadata: { deviceInfo: 'mobile', cameraSettings: 'n/a' },
+                } as any);
+              } catch (_err) {}
+            }}
+          >
+            <Text style={styles.evolveButtonText}>📤 Share</Text>
+          </TouchableOpacity>
         </ScrollView>
       </View>
     </Modal>
@@ -275,6 +301,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.text,
+  },
+  greenPlanDescription: {
+    marginTop: 8,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
   },
   collectionContainer: {
     backgroundColor: COLORS.surface,
