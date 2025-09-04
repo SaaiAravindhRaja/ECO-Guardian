@@ -20,6 +20,8 @@ import { CreatureCollectionManager } from '@/services/CreatureCollectionManager'
 import { AnalyticsService } from '@/services/AnalyticsService';
 import { PerformanceMonitor } from '@/services/PerformanceMonitor';
 import { ErrorRecoveryService } from '@/services/ErrorRecoveryService';
+import { ARCompatibilityService } from '@/services/ARCompatibilityService';
+import { useSelector as useReduxSelector } from 'react-redux';
 
 const { width, height } = Dimensions.get('window');
 
@@ -38,6 +40,8 @@ export function ARCameraScreen() {
   const analytics = AnalyticsService.getInstance();
   const perf = new PerformanceMonitor();
   const recovery = new ErrorRecoveryService();
+  const arCompat = new ARCompatibilityService();
+  const arTracking = useReduxSelector((state: RootState) => (state as any).ar?.tracking);
 
   useEffect(() => {
     requestPermissions();
@@ -47,9 +51,10 @@ export function ARCameraScreen() {
   const requestPermissions = async () => {
     const cameraPermission = await Camera.requestCameraPermissionsAsync();
     const locationPermission = await locationService.requestPermissions();
+    const arSupported = await arCompat.isARSupported();
     
     setHasPermission(
-      cameraPermission.status === 'granted' && locationPermission
+      cameraPermission.status === 'granted' && locationPermission && arSupported
     );
   };
 
@@ -125,7 +130,7 @@ export function ARCameraScreen() {
     return (
       <View style={styles.container}>
         <Text style={styles.message}>
-          Camera and location permissions are required to use AR features
+          Camera, location, and AR support are required to use AR features
         </Text>
         <TouchableOpacity style={styles.button} onPress={requestPermissions}>
           <Text style={styles.buttonText}>Grant Permissions</Text>
@@ -164,6 +169,12 @@ export function ARCameraScreen() {
 
         {/* UI Controls */}
         <View style={styles.controls}>
+          {/* Tracking state badge */}
+          {arTracking && (
+            <View style={styles.trackingBadge}>
+              <Text style={styles.trackingText}>Tracking: {arTracking}</Text>
+            </View>
+          )}
           <TouchableOpacity
             style={[styles.scanButton, isScanning && styles.scanButtonActive]}
             onPress={handleScanForCreatures}
@@ -229,6 +240,17 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
+  },
+  trackingBadge: {
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  trackingText: {
+    color: '#fff',
+    fontSize: 12,
   },
   infoText: {
     color: '#7ED321',
