@@ -1,26 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+// Tabs are defined in a dedicated TabNavigator
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { AsyncStorageService } from '@/utils/AsyncStorage';
-import { TabBarIcon } from '@/components/TabBarIcon';
 import { PermissionScreen } from '@/components/PermissionScreen';
-import { COLORS } from '@/utils/constants';
 
 // Screens
 import { SplashScreen } from '@/screens/SplashScreen';
 import { OnboardingScreen } from '@/components/OnboardingScreen';
 import { LoginScreen } from '@/screens/auth/LoginScreen';
 import { SignUpScreen } from '@/screens/auth/SignUpScreen';
-import { ARCameraScreen } from '@/screens/ar/ARCameraScreen';
-import { CreatureCollectionScreen } from '@/screens/creatures/CreatureCollectionScreen';
-import { ProfileScreen } from '@/screens/profile/ProfileScreen';
-import { ChallengesScreen } from '@/screens/challenges/ChallengesScreen';
-import { MapScreen } from '@/screens/map/MapScreen';
+import { TabNavigator } from '@/navigation/TabNavigator';
 
 const Stack = createStackNavigator();
-const Tab = createBottomTabNavigator();
 
 function AuthNavigator() {
   return (
@@ -31,67 +24,6 @@ function AuthNavigator() {
   );
 }
 
-function MainTabNavigator() {
-  return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: COLORS.surface,
-          borderTopColor: COLORS.border,
-        },
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.accent,
-      }}
-    >
-      <Tab.Screen 
-        name="AR Camera" 
-        component={ARCameraScreen}
-        options={{
-          tabBarIcon: ({ focused, color, size }) => (
-            <TabBarIcon name="AR Camera" focused={focused} color={color} size={size} />
-          ),
-        }}
-      />
-      <Tab.Screen 
-        name="Collection" 
-        component={CreatureCollectionScreen}
-        options={{
-          tabBarIcon: ({ focused, color, size }) => (
-            <TabBarIcon name="Collection" focused={focused} color={color} size={size} />
-          ),
-        }}
-      />
-      <Tab.Screen 
-        name="Map" 
-        component={MapScreen}
-        options={{
-          tabBarIcon: ({ focused, color, size }) => (
-            <TabBarIcon name="Map" focused={focused} color={color} size={size} />
-          ),
-        }}
-      />
-      <Tab.Screen 
-        name="Challenges" 
-        component={ChallengesScreen}
-        options={{
-          tabBarIcon: ({ focused, color, size }) => (
-            <TabBarIcon name="Challenges" focused={focused} color={color} size={size} />
-          ),
-        }}
-      />
-      <Tab.Screen 
-        name="Profile" 
-        component={ProfileScreen}
-        options={{
-          tabBarIcon: ({ focused, color, size }) => (
-            <TabBarIcon name="Profile" focused={focused} color={color} size={size} />
-          ),
-        }}
-      />
-    </Tab.Navigator>
-  );
-}
 
 export function AppNavigator() {
   const user = useSelector((state: RootState) => state.auth.user);
@@ -145,7 +77,7 @@ export function AppNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {user ? (
-        <Stack.Screen name="Main" component={MainTabNavigator} />
+        <Stack.Screen name="Main" component={TabNavigator} />
       ) : (
         <Stack.Screen name="Auth" component={AuthNavigator} />
       )}

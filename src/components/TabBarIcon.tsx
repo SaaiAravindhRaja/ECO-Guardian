@@ -9,10 +9,10 @@ interface TabBarIconProps {
 }
 
 const iconMap: { [key: string]: string } = {
-  'AR Camera': '📷',
+  'Home': '📷', // Placeholder for AR view; later integrate AR-specific icon
   'Collection': '🐾',
   'Map': '🗺️',
-  'Challenges': '🏆',
+  'Progress': '📈',
   'Profile': '👤',
 };
 
