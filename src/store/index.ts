@@ -4,6 +4,7 @@ import { creatureSlice } from './slices/creatureSlice';
 import { locationSlice } from './slices/locationSlice';
 import { challengeSlice } from './slices/challengeSlice';
 import { userSlice } from './slices/userSlice';
+import { arSlice } from './slices/arSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     location: locationSlice.reducer,
     challenges: challengeSlice.reducer,
     user: userSlice.reducer,
+    ar: arSlice.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
