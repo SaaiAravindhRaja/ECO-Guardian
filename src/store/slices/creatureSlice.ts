@@ -7,6 +7,8 @@ interface CreatureState {
   spawnedCreatures: Creature[];
   isLoading: boolean;
   error: string | null;
+  lastSpawnedAt?: string;
+  offlineQueueSize?: number;
 }
 
 const initialState: CreatureState = {
@@ -15,6 +17,8 @@ const initialState: CreatureState = {
   spawnedCreatures: [],
   isLoading: false,
   error: null,
+  lastSpawnedAt: undefined,
+  offlineQueueSize: 0,
 };
 
 export const creatureSlice = createSlice({
@@ -26,6 +30,7 @@ export const creatureSlice = createSlice({
     },
     spawnCreature: (state, action: PayloadAction<Creature>) => {
       state.spawnedCreatures.push(action.payload);
+      state.lastSpawnedAt = new Date().toISOString();
     },
     collectCreature: (state, action: PayloadAction<string>) => {
       const creatureIndex = state.spawnedCreatures.findIndex(c => c.id === action.payload);
@@ -44,6 +49,9 @@ export const creatureSlice = createSlice({
     setError: (state, action: PayloadAction<string>) => {
       state.error = action.payload;
     },
+    setOfflineQueueSize: (state, action: PayloadAction<number>) => {
+      state.offlineQueueSize = action.payload;
+    },
   },
 });
 
@@ -53,5 +61,6 @@ export const {
   collectCreature, 
   clearSpawnedCreatures,
   setLoading,
-  setError 
+  setError,
+  setOfflineQueueSize
 } = creatureSlice.actions;

@@ -6,10 +6,24 @@ import {
   RarityLevel, 
   GreenPlanTarget, 
   EcoLocationType,
-  Location 
+  Location,
+  CollectionResult
 } from '@/types';
+import { EnvironmentalDataService } from './EnvironmentalDataService';
+import { OfflineQueueService } from './OfflineQueueService';
 
 export class CreatureService {
+  private env = new EnvironmentalDataService();
+  private offlineQueue = new OfflineQueueService();
+  async spawnCreatureForTarget(
+    target: GreenPlanTarget,
+    location: Location,
+    userId: string
+  ): Promise<Creature> {
+    const creatureType = this.getCreatureTypeFromTarget(target);
+    return this.spawnCreature(this.getEcoLocationFromTarget(target), location, userId);
+  }
+
   async spawnCreature(
     ecoLocationType: EcoLocationType, 
     location: Location, 
@@ -27,13 +41,16 @@ export class CreatureService {
       evolutionLevel: 1,
       backstory: this.getCreatureBackstory(creatureType),
       visualAssets: this.getCreatureAssets(creatureType),
-      collectedAt: new Date(),
+      collectedAt: new Date() as any,
       experiencePoints: 0,
     };
 
-    // Save spawned creature to Firebase
-    const spawnRef = ref(database, `spawned_creatures/${userId}`);
-    await push(spawnRef, creature);
+    // Save spawned creature to Firebase under deterministic id
+    const spawnRef = ref(database, `spawned_creatures/${userId}/${creature.id}`);
+    await set(spawnRef, {
+      ...creature,
+      collectedAt: new Date().toISOString(),
+    });
 
     return creature;
   }
@@ -46,9 +63,44 @@ export class CreatureService {
     const spawnSnapshot = await get(spawnRef);
     if (spawnSnapshot.exists()) {
       const creature = spawnSnapshot.val();
+      // Attach environmental snapshot
+      try {
+        const snap = await this.env.getCurrentEnvironmentalData();
+        creature.collectionSnapshot = snap;
+      } catch (_error) {}
+
       await set(collectionRef, creature);
       await set(spawnRef, null); // Remove from spawned
     }
+  }
+
+  async collectCreatureWithRetry(creatureId: string, userId: string): Promise<CollectionResult> {
+    const doCollect = async () => {
+      await this.collectCreature(creatureId, userId);
+    };
+    this.offlineQueue.enqueue(doCollect);
+    // We optimistically return success; queue ensures eventual consistency
+    const creatures = await this.getUserCreatures(userId);
+    const creature = creatures.find(c => c.id === creatureId);
+    return {
+      success: true,
+      creature: creature || (await this.getUserCreatures(userId))[0],
+    } as CollectionResult;
+  }
+
+  async evolveCreature(userId: string, creatureId: string): Promise<Creature | null> {
+    const creatureRef = ref(database, `users/${userId}/creatures/${creatureId}`);
+    const snapshot = await get(creatureRef);
+    if (!snapshot.exists()) return null;
+    const creature: Creature = snapshot.val();
+    if (creature.experiencePoints < 1000) return creature; // not enough XP
+    creature.experiencePoints -= 1000;
+    creature.evolutionLevel = Math.min(5, (creature.evolutionLevel || 1) + 1);
+    await set(creatureRef, {
+      ...creature,
+      collectedAt: (creature.collectedAt ? new Date(creature.collectedAt) : new Date()).toISOString(),
+    });
+    return creature;
   }
 
   async getUserCreatures(userId: string): Promise<Creature[]> {
@@ -58,10 +110,14 @@ export class CreatureService {
     if (!snapshot.exists()) return [];
     
     const creaturesData = snapshot.val();
-    return Object.keys(creaturesData).map(key => ({
-      ...creaturesData[key],
-      id: key,
-    }));
+    return Object.keys(creaturesData).map(key => {
+      const raw = creaturesData[key];
+      return {
+        ...raw,
+        id: key,
+        collectedAt: raw?.collectedAt ? new Date(raw.collectedAt) : new Date(),
+      } as Creature;
+    });
   }
 
   private getCreatureTypeFromLocation(locationType: EcoLocationType): CreatureType {
@@ -95,6 +151,38 @@ export class CreatureService {
         return GreenPlanTarget.RESILIENT_FUTURE;
       default:
         return GreenPlanTarget.CITY_IN_NATURE;
+    }
+  }
+
+  private getCreatureTypeFromTarget(target: GreenPlanTarget): CreatureType {
+    switch (target) {
+      case GreenPlanTarget.CITY_IN_NATURE:
+        return CreatureType.GREENIE;
+      case GreenPlanTarget.ENERGY_RESET:
+        return CreatureType.SPARKIE;
+      case GreenPlanTarget.SUSTAINABLE_LIVING:
+        return CreatureType.BINITIES;
+      case GreenPlanTarget.RESILIENT_FUTURE:
+        return CreatureType.DRIPPIES;
+      case GreenPlanTarget.GREEN_ECONOMY:
+      default:
+        return CreatureType.GREENIE;
+    }
+  }
+
+  private getEcoLocationFromTarget(target: GreenPlanTarget): EcoLocationType {
+    switch (target) {
+      case GreenPlanTarget.CITY_IN_NATURE:
+        return EcoLocationType.NATURE_PARK;
+      case GreenPlanTarget.ENERGY_RESET:
+        return EcoLocationType.EV_CHARGING_STATION;
+      case GreenPlanTarget.SUSTAINABLE_LIVING:
+        return EcoLocationType.RECYCLING_CENTER;
+      case GreenPlanTarget.RESILIENT_FUTURE:
+        return EcoLocationType.ABC_WATERS_SITE;
+      case GreenPlanTarget.GREEN_ECONOMY:
+      default:
+        return EcoLocationType.NATURE_PARK;
     }
   }
 

@@ -72,6 +72,18 @@ export class AnalyticsService {
     });
   }
 
+  trackARSession(state: string) {
+    this.trackEvent('ar_session', { state });
+  }
+
+  trackCreatureSpawn(type: string, rarity: string) {
+    this.trackEvent('creature_spawn', { type, rarity });
+  }
+
+  trackCreatureCollect(type: string, rarity: string) {
+    this.trackEvent('creature_collect', { type, rarity });
+  }
+
   // Location-related events
   trackLocationVisit(locationType: string, locationName: string) {
     this.trackEvent('location_visited', {

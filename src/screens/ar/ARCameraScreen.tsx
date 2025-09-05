@@ -8,12 +8,20 @@ import {
   Dimensions,
 } from 'react-native';
 import { Camera, CameraView } from 'expo-camera';
+import { ARCreatureView } from '@/components/ARCreatureView';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store';
 import { LocationService } from '@/services/LocationService';
 import { CreatureService } from '@/services/CreatureService';
+import { CreatureSpawnManager } from '@/services/CreatureSpawnManager';
 import { spawnCreature, collectCreature } from '@/store/slices/creatureSlice';
 import { setCurrentLocation } from '@/store/slices/locationSlice';
+import { CreatureCollectionManager } from '@/services/CreatureCollectionManager';
+import { AnalyticsService } from '@/services/AnalyticsService';
+import { PerformanceMonitor } from '@/services/PerformanceMonitor';
+import { ErrorRecoveryService } from '@/services/ErrorRecoveryService';
+import { ARCompatibilityService } from '@/services/ARCompatibilityService';
+import { useSelector as useReduxSelector } from 'react-redux';
 
 const { width, height } = Dimensions.get('window');
 
@@ -27,6 +35,13 @@ export function ARCameraScreen() {
 
   const locationService = new LocationService();
   const creatureService = new CreatureService();
+  const spawnManager = new CreatureSpawnManager();
+  const collectionManager = new CreatureCollectionManager();
+  const analytics = AnalyticsService.getInstance();
+  const perf = new PerformanceMonitor();
+  const recovery = new ErrorRecoveryService();
+  const arCompat = new ARCompatibilityService();
+  const arTracking = useReduxSelector((state: RootState) => (state as any).ar?.tracking);
 
   useEffect(() => {
     requestPermissions();
@@ -36,9 +51,10 @@ export function ARCameraScreen() {
   const requestPermissions = async () => {
     const cameraPermission = await Camera.requestCameraPermissionsAsync();
     const locationPermission = await locationService.requestPermissions();
+    const arSupported = await arCompat.isARSupported();
     
     setHasPermission(
-      cameraPermission.status === 'granted' && locationPermission
+      cameraPermission.status === 'granted' && locationPermission && arSupported
     );
   };
 
@@ -56,22 +72,22 @@ export function ARCameraScreen() {
 
     setIsScanning(true);
     try {
+      perf.mark('scan_start');
       const nearbyLocations = await locationService.getNearbyEcoLocations(currentLocation);
       
       for (const ecoLocation of nearbyLocations) {
         const isNearby = await locationService.validateCheckIn(currentLocation, ecoLocation);
-        
-        if (isNearby) {
-          const creature = await creatureService.spawnCreature(
-            ecoLocation.type,
-            currentLocation,
-            user.uid
-          );
+        if (!isNearby) continue;
+
+        const creature = await spawnManager.trySpawnForEcoLocation(
+          ecoLocation.type,
+          currentLocation,
+          user.uid
+        );
+        if (creature) {
           dispatch(spawnCreature(creature));
-          Alert.alert(
-            'Creature Found!',
-            `A ${creature.type} has appeared! Tap to collect it.`
-          );
+          analytics.trackCreatureSpawn(creature.type, creature.rarity);
+          Alert.alert('Creature Found!', `A ${creature.type} has appeared! Tap to collect it.`);
           break;
         }
       }
@@ -79,6 +95,9 @@ export function ARCameraScreen() {
       console.error('Error scanning for creatures:', error);
       Alert.alert('Error', 'Failed to scan for creatures');
     } finally {
+      perf.mark('scan_end');
+      const elapsed = perf.measure('scan_start', 'scan_end') || 0;
+      analytics.trackPerformance('scan_time_ms', Math.round(elapsed), 'ms');
       setIsScanning(false);
     }
   };
@@ -87,8 +106,11 @@ export function ARCameraScreen() {
     if (!user) return;
 
     try {
-      await creatureService.collectCreature(creatureId, user.uid);
+      await collectionManager.enrichAndCollect(creatureId, user.uid);
       dispatch(collectCreature(creatureId));
+      // Best-effort analytics based on found creature in state
+      const c = spawnedCreatures.find(c => c.id === creatureId) || null;
+      if (c) analytics.trackCreatureCollect(c.type, c.rarity);
       Alert.alert('Success!', 'Creature collected successfully!');
     } catch (error) {
       console.error('Error collecting creature:', error);
@@ -108,7 +130,7 @@ export function ARCameraScreen() {
     return (
       <View style={styles.container}>
         <Text style={styles.message}>
-          Camera and location permissions are required to use AR features
+          Camera, location, and AR support are required to use AR features
         </Text>
         <TouchableOpacity style={styles.button} onPress={requestPermissions}>
           <Text style={styles.buttonText}>Grant Permissions</Text>
@@ -120,6 +142,10 @@ export function ARCameraScreen() {
   return (
     <View style={styles.container}>
       <CameraView style={styles.camera}>
+        <ARCreatureView
+          creatures={spawnedCreatures}
+          onCreatureTap={handleCollectCreature}
+        />
         {/* AR Overlay */}
         <View style={styles.overlay}>
           {/* Spawned creatures would be rendered here */}
@@ -143,6 +169,12 @@ export function ARCameraScreen() {
 
         {/* UI Controls */}
         <View style={styles.controls}>
+          {/* Tracking state badge */}
+          {arTracking && (
+            <View style={styles.trackingBadge}>
+              <Text style={styles.trackingText}>Tracking: {arTracking}</Text>
+            </View>
+          )}
           <TouchableOpacity
             style={[styles.scanButton, isScanning && styles.scanButtonActive]}
             onPress={handleScanForCreatures}
@@ -208,6 +240,17 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
+  },
+  trackingBadge: {
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  trackingText: {
+    color: '#fff',
+    fontSize: 12,
   },
   infoText: {
     color: '#7ED321',
