@@ -47,6 +47,8 @@ export interface Creature {
   collectedAt: Date;
   experiencePoints: number;
   collectionSnapshot?: EnvironmentalSnapshot;
+  tileIdP7?: string;
+  tileIdP8?: string;
 }
 
 export interface ARAssets {

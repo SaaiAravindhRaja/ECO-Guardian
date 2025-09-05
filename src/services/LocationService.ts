@@ -101,7 +101,9 @@ export class LocationService {
     // Require accuracy and non-suspicious movement before allowing check-in
     if (!this.isAccurateEnough(userLocation)) return false;
 
-    return distance <= ecoLocation.verificationRadius;
+    // Hard eligibility radius = 50 m
+    const ELIGIBILITY_METERS = 50;
+    return distance <= Math.min(ecoLocation.verificationRadius, ELIGIBILITY_METERS);
   }
 
   private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {

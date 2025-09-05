@@ -121,6 +121,12 @@ export function ARCreatureView({ creatures, onCreatureTap }: ARCreatureViewProps
           <View style={[styles.pulse, tappedId === p.id && styles.pulseActive]} />
         </TouchableOpacity>
       ))}
+      {/* Tracking lost UI */}
+      {tracking !== 'normal' && (
+        <View style={styles.trackingBanner}>
+          <Text style={styles.trackingBannerText}>Tracking lost. Re-center your device.</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -154,6 +160,19 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     backgroundColor: 'rgba(126,211,33,0.9)',
+  },
+  trackingBanner: {
+    position: 'absolute',
+    top: 20,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  trackingBannerText: {
+    color: '#fff',
+    fontSize: 12,
   },
 });
 

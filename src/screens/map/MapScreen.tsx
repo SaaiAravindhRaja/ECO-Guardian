@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,12 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store';
 import { LocationService } from '@/services/LocationService';
 import { setCurrentLocation, setNearbyEcoLocations } from '@/store/slices/locationSlice';
-import { EcoLocation, EcoLocationType, GreenPlanTarget } from '@/types';
+import { EcoLocation, EcoLocationType, GreenPlanTarget, Creature } from '@/types';
+import MapView, { UrlTile, Marker, Circle, Region, PROVIDER_DEFAULT } from 'react-native-maps';
+import { getTileUrl } from '@/utils/tiles';
+import { useGetSpawnsByTilesQuery } from '@/services/api';
+import { tileIdFor } from '@/lib/geo';
+import { clusterByTile, isSpawnEligible } from '@/services/selectors/spawnSelectors';
 
 export function MapScreen() {
   const dispatch = useDispatch();
@@ -21,6 +26,42 @@ export function MapScreen() {
   const [selectedLocation, setSelectedLocation] = useState<EcoLocation | null>(null);
   
   const locationService = new LocationService();
+  const region: Region | undefined = currentLocation
+    ? {
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+        latitudeDelta: 0.02,
+        longitudeDelta: 0.02,
+      }
+    : undefined;
+
+  const tiles = useMemo(() => {
+    if (!currentLocation) return [] as string[];
+    const t7 = tileIdFor(currentLocation.latitude, currentLocation.longitude, 7);
+    // Expand slightly by including neighbors via center-based hash; minimal for now
+    return [t7];
+  }, [currentLocation]);
+
+  const { data: spawns = [] } = useGetSpawnsByTilesQuery(
+    currentLocation ? { tiles, userId: useSelector((s: RootState) => s.auth.user?.uid || 'anon') } : ({} as any),
+    { skip: !currentLocation }
+  );
+
+  const clusters = useMemo(() => clusterByTile(spawns), [spawns]);
+  const [zoomLevel, setZoomLevel] = useState(14);
+  const mapRef = React.useRef<MapView | null>(null);
+
+  const handleClusterPress = (tileId: string) => {
+    const cluster = clusters.find(c => c.tileIdP7 === tileId);
+    if (!cluster || !mapRef.current) return;
+    // Fit to contained spawn markers
+    const coords = cluster.items.map(i => ({ latitude: i.spawnLocation.latitude, longitude: i.spawnLocation.longitude }));
+    if (coords.length === 1) {
+      mapRef.current.animateCamera({ center: coords[0], zoom: 16 });
+    } else {
+      mapRef.current.fitToCoordinates(coords, { edgePadding: { top: 60, right: 60, bottom: 60, left: 60 }, animated: true });
+    }
+  };
 
   useEffect(() => {
     loadCurrentLocation();
@@ -93,13 +134,24 @@ export function MapScreen() {
       } else {
         Alert.alert(
           'Too Far Away',
-          `You need to be within ${location.verificationRadius}m of ${location.name} to check in.`
+          `You need to be within 50m of ${location.name} to check in.`
         );
       }
     } catch (error) {
       console.error('Error checking in:', error);
       Alert.alert('Error', 'Failed to check in');
     }
+  };
+
+  const isEligible = (loc: EcoLocation): boolean => {
+    if (!currentLocation) return false;
+    const distance = locationService['calculateDistance'](
+      currentLocation.latitude,
+      currentLocation.longitude,
+      loc.coordinates.lat,
+      loc.coordinates.lng
+    );
+    return distance <= 50;
   };
 
   const renderLocationCard = (location: EcoLocation) => (
@@ -139,12 +191,30 @@ export function MapScreen() {
           </Text>
         </View>
         
-        <TouchableOpacity
-          style={styles.checkInButton}
-          onPress={() => handleCheckIn(location)}
-        >
-          <Text style={styles.checkInButtonText}>Check In</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity
+            style={[styles.checkInButton, !isEligible(location) && { opacity: 0.5 }]}
+            onPress={() => handleCheckIn(location)}
+            disabled={!isEligible(location)}
+          >
+            <Text style={styles.checkInButtonText}>{isEligible(location) ? 'Check In' : 'Move closer (<50m)'}</Text>
+          </TouchableOpacity>
+          {/* Minimal AR entry: uses first spawn for demo; would filter by proximity in full impl */}
+          <TouchableOpacity
+            style={[styles.checkInButton, { backgroundColor: '#3498DB' }, !isEligible(location) && { opacity: 0.5 }]}
+            onPress={() => {
+              // Navigate to AR; TabNavigator has Home as ARCameraScreen
+              // Users can collect from AR; analytics logged in AR screen
+              if (!isEligible(location)) return;
+              // Focus Home tab
+              // @ts-ignore navigation comes via parent
+              // navigation.navigate('Home');
+            }}
+            disabled={!isEligible(location)}
+          >
+            <Text style={[styles.checkInButtonText, { color: '#fff' }]}>View in AR</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -167,21 +237,54 @@ export function MapScreen() {
         )}
       </View>
 
-      <ScrollView 
-        style={styles.locationsList}
-        showsVerticalScrollIndicator={false}
-      >
-        {nearbyEcoLocations.length > 0 ? (
-          nearbyEcoLocations.map(renderLocationCard)
-        ) : (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No eco-locations found nearby</Text>
-            <Text style={styles.emptySubtext}>
-              Try refreshing your location or explore different areas
-            </Text>
-          </View>
+      <View style={{ flex: 1 }}>
+        {region && (
+          <MapView
+            ref={mapRef}
+            style={{ flex: 1 }}
+            initialRegion={region}
+            provider={PROVIDER_DEFAULT}
+            onRegionChangeComplete={(r) => {
+              // approximate zoom calculation for RN Maps: not exact but sufficient thresholding
+              const zl = Math.round(Math.log(360 / r.longitudeDelta) / Math.LN2);
+              setZoomLevel(zl);
+            }}
+          >
+            <UrlTile urlTemplate={getTileUrl('{z}' as any, '{x}' as any, '{y}' as any)} zIndex={-1} maximumZ={20} />
+            <Circle
+              center={{ latitude: region.latitude, longitude: region.longitude }}
+              radius={50}
+              strokeColor="#7ED321"
+              fillColor="rgba(126,211,33,0.15)"
+            />
+            {zoomLevel < 14 && clusters.map((cl) => (
+              <Marker
+                key={cl.tileIdP7}
+                coordinate={{ latitude: cl.center.lat, longitude: cl.center.lng }}
+                title={cl.count > 1 ? `${cl.count} spawns` : 'Spawn'}
+                onPress={() => handleClusterPress(cl.tileIdP7)}
+              >
+                <View style={{ backgroundColor: '#2D5A27', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: '#4A7C59' }}>
+                  <Text style={{ color: '#7ED321', fontWeight: '700' }}>{cl.count}</Text>
+                </View>
+              </Marker>
+            ))}
+            {zoomLevel >= 14 && spawns.map((s) => {
+              const eligible = currentLocation ? isSpawnEligible(currentLocation, s) : false;
+              return (
+                <Marker
+                  key={s.id}
+                  coordinate={{ latitude: s.spawnLocation.latitude, longitude: s.spawnLocation.longitude }}
+                  title={`${s.type} (${s.rarity})`}
+                  description={eligible ? 'Eligible' : 'Move closer (<50m)'}
+                >
+                  <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: eligible ? '#7ED321' : '#6B8E6B', borderWidth: 2, borderColor: '#1B4332' }} />
+                </Marker>
+              );
+            })}
+          </MapView>
         )}
-      </ScrollView>
+      </View>
 
       {/* Location Detail Modal */}
       {selectedLocation && (

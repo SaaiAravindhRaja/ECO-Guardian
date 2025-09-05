@@ -10,6 +10,7 @@ import {
   CollectionResult
 } from '@/types';
 import { EnvironmentalDataService } from './EnvironmentalDataService';
+import { tileIdFor } from '@/lib/geo';
 import { OfflineQueueService } from './OfflineQueueService';
 
 export class CreatureService {
@@ -43,6 +44,8 @@ export class CreatureService {
       visualAssets: this.getCreatureAssets(creatureType),
       collectedAt: new Date() as any,
       experiencePoints: 0,
+      tileIdP7: tileIdFor(location.latitude, location.longitude, 7),
+      tileIdP8: tileIdFor(location.latitude, location.longitude, 8),
     };
 
     // Save spawned creature to Firebase under deterministic id
