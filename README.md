@@ -49,30 +49,40 @@ ECO-Guardian gamifies sustainability through AR creature collection:
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 16+
-- Expo CLI (`npm install -g @expo/cli`)
-- iOS Simulator or Android device
+- **Node.js**: 18.20.2+ (LTS recommended)
+- **Package Manager**: npm (included with Node.js)
+- **Expo CLI**: `npm install -g @expo/cli`
+- **iOS Development**: Xcode 15+ with iOS Simulator
+- **Android Development**: Android Studio with emulator or physical device
+- **macOS**: Watchman (`brew install watchman`)
 
-### Installation
+### Clean Installation
 ```bash
 # Clone the repository
 git clone https://github.com/your-username/eco-guardian-app.git
 cd eco-guardian-app
 
-# Install dependencies
-npm install
+# Clean install dependencies
+rm -rf node_modules package-lock.json
+npm install --legacy-peer-deps
 
 # Set up environment variables
 cp .env.example .env
 # Edit .env with your Firebase and API keys
 
 # Start development server
-npm start
+npx expo start --localhost
 
-# Run on device
-npm run ios     # iOS
-npm run android # Android
+# Run on device (in separate terminal)
+npx expo run:ios     # iOS Simulator
+npx expo run:android # Android Emulator
 ```
+
+### Troubleshooting
+- **Metro bundler errors**: Run `npx expo start --localhost -c` to clear cache
+- **"Too many open files" (macOS)**: Run `ulimit -n 65536` before starting Metro
+- **iOS build issues**: Clean Xcode build folder (Product → Clean Build Folder)
+- **Android build issues**: Run `cd android && ./gradlew clean`
 
 ### Firebase Setup
 1. Create Firebase project at https://console.firebase.google.com
@@ -88,6 +98,17 @@ npm run android # Android
 - **Backend**: Firebase (real-time, auth, storage)
 - **State**: Redux Toolkit with offline support
 - **APIs**: OneMap, NEA, PUB, Smart Nation
+
+### Compatibility Matrix
+| Component | Version | Notes |
+|-----------|---------|-------|
+| **React Native** | 0.73.0 | Stable with Expo SDK 50 |
+| **React** | 18.2.0 | Aligned with RN peer requirements |
+| **Expo SDK** | 50.0.0 | Latest stable release |
+| **Node.js** | 18.20.2+ | LTS recommended |
+| **iOS Target** | 13.4+ | Required for modern RN features |
+| **Android SDK** | 33+ | Target SDK for Play Store compliance |
+| **CocoaPods** | 1.12+ | Required for iOS dependencies |
 
 ### Project Structure
 ```
