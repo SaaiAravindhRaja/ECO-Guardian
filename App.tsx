@@ -11,6 +11,10 @@ import { CreatureProvider } from '@/contexts/CreatureContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { NetworkStatus } from '@/components/NetworkStatus';
 
+// firebase shit
+import { initializeApp } from 'firebase/app';
+import { getFirestore, collection, getDocs } from 'firebase/firestore';
+
 export default function App() {
   return (
     <ErrorBoundary>
