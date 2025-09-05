@@ -56,14 +56,13 @@ ECO-Guardian gamifies sustainability through AR creature collection:
 - **Android Development**: Android Studio with emulator or physical device
 - **macOS**: Watchman (`brew install watchman`)
 
-### Clean Installation
+### Installation Instructions
 ```bash
 # Clone the repository
 git clone https://github.com/your-username/eco-guardian-app.git
-cd eco-guardian-app
+cd ECO-guardian
 
-# Clean install dependencies
-rm -rf node_modules package-lock.json
+# Install dependencies
 npm install --legacy-peer-deps
 
 # Set up environment variables
