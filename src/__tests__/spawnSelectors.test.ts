@@ -1,5 +1,5 @@
 import { clusterByTile, isSpawnEligible } from '@/services/selectors/spawnSelectors';
-import type { Creature, RarityLevel, CreatureType, GreenPlanTarget, Location } from '@/types';
+import { Creature, RarityLevel, CreatureType, GreenPlanTarget, Location } from '@/types';
 
 function makeCreature(id: string, lat: number, lng: number, tile: string): Creature {
   return {

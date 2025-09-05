@@ -30,15 +30,6 @@ export class AnalyticsService {
   }
 
   // Creature-related events
-  trackCreatureSpawn(creatureType: string, location: any, rarity: string) {
-    this.trackEvent('creature_spawned', {
-      creature_type: creatureType,
-      rarity,
-      location_type: location.type,
-      latitude: location.coordinates?.lat,
-      longitude: location.coordinates?.lng,
-    });
-  }
 
   trackCreatureCollected(creatureType: string, rarity: string, timeToCollect: number) {
     this.trackEvent('creature_collected', {

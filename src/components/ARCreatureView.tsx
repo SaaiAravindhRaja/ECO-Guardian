@@ -20,7 +20,7 @@ export function ARCreatureView({ creatures, onCreatureTap }: ARCreatureViewProps
   const analytics = useRef(AnalyticsService.getInstance());
   const modelLoader = useRef(new ARModelLoader());
   const dispatch = useDispatch();
-  const [tracking, setTracking] = useState('not_available');
+  const [tracking, setTrackingState] = useState('not_available');
   const [tappedId, setTappedId] = useState<string | null>(null);
   const { width, height } = Dimensions.get('window');
 
@@ -63,7 +63,7 @@ export function ARCreatureView({ creatures, onCreatureTap }: ARCreatureViewProps
         onPlaneDetected={() => {
           session.current.setTrackingState('normal');
           analytics.current.trackARSession('plane_detected');
-          setTracking('normal');
+          setTrackingState('normal');
           dispatch(setTracking('normal' as any));
         }}
         onTap={(event: any) => {
@@ -74,7 +74,7 @@ export function ARCreatureView({ creatures, onCreatureTap }: ARCreatureViewProps
         onTrackingStateUpdate={() => {
           session.current.setTrackingState('limited_initializing');
           analytics.current.trackARSession('tracking_limited');
-          setTracking('limited_initializing');
+          setTrackingState('limited_initializing');
           dispatch(setTracking('limited_initializing' as any));
         }}
       />
@@ -91,7 +91,7 @@ export function ARCreatureView({ creatures, onCreatureTap }: ARCreatureViewProps
         onPlaneDetected={() => {
           session.current.setTrackingState('normal');
           analytics.current.trackARSession('plane_detected');
-          setTracking('normal');
+          setTrackingState('normal');
           dispatch(setTracking('normal' as any));
         }}
         onTap={() => {

@@ -66,7 +66,7 @@ export function LoginScreen({ navigation }: any) {
         <View style={styles.form}>
           <View>
             <TextInput
-              style={[styles.input, emailError && styles.inputError]}
+              style={[styles.input, emailError ? styles.inputError : null as any]}
               placeholder="Email"
               value={email}
               onChangeText={setEmail}
@@ -79,7 +79,7 @@ export function LoginScreen({ navigation }: any) {
           
           <View>
             <TextInput
-              style={[styles.input, passwordError && styles.inputError]}
+              style={[styles.input, passwordError ? styles.inputError : null as any]}
               placeholder="Password"
               value={password}
               onChangeText={setPassword}

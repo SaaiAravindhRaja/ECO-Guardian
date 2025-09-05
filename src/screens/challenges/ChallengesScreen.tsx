@@ -13,8 +13,6 @@ import { RootState } from '@/store';
 import { Challenge, ChallengeType, GreenPlanTarget } from '@/types';
 import { setActiveChallenges, completeChallenge } from '@/store/slices/challengeSlice';
 import { useNavigation } from '@react-navigation/native';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/store';
 import { CreatureService } from '@/services/CreatureService';
 import { LocationService } from '@/services/LocationService';
 import { spawnCreature } from '@/store/slices/creatureSlice';

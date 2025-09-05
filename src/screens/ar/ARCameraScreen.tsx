@@ -7,7 +7,7 @@ import {
   Alert,
   Dimensions,
 } from 'react-native';
-import { Camera, CameraView } from 'expo-camera';
+import { Camera } from 'expo-camera';
 import { ARCreatureView } from '@/components/ARCreatureView';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store';
@@ -141,7 +141,7 @@ export function ARCameraScreen() {
 
   return (
     <View style={styles.container}>
-      <CameraView style={styles.camera}>
+      <View style={styles.camera}>
         <ARCreatureView
           creatures={spawnedCreatures}
           onCreatureTap={handleCollectCreature}
@@ -196,7 +196,7 @@ export function ARCameraScreen() {
             )}
           </View>
         </View>
-      </CameraView>
+      </View>
     </View>
   );
 }
