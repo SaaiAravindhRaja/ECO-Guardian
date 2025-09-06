@@ -4,10 +4,6 @@
 
 Transform Singapore's Green Plan 2030 into an exciting AR adventure! Collect unique Singapore-themed creatures by completing real-world sustainable actions. Make eco-friendly habits fun, social, and rewarding.
 
-[![Demo Video](https://img.shields.io/badge/Demo-Watch%20Now-brightgreen)](https://your-demo-link.com)
-[![Hackathon](https://img.shields.io/badge/Hackathon-Ready-orange)](HACKATHON_DEMO.md)
-[![Deployment](https://img.shields.io/badge/Deployment-Guide-blue)](DEPLOYMENT.md)
-
 ## 🎯 The Problem
 
 Singapore's Green Plan 2030 is ambitious, but there's a critical gap between national sustainability targets and individual action. Young Singaporeans (Gen Z & Millennials) need engaging motivation to adopt eco-friendly habits consistently.
@@ -137,20 +133,6 @@ src/
 - **2.5kg CO2 Saved** per user per month (estimated)
 - **2.8M Target Users** (Gen Z/Millennials in Singapore)
 
-## 🎮 Demo & Hackathon
-
-### Quick Demo
-1. **Onboarding**: Swipe through Green Plan 2030 introduction
-2. **AR Camera**: Spawn creatures at eco-locations
-3. **Collection**: View creatures with Singapore backstories
-4. **Challenges**: Complete sustainability tasks
-5. **Impact**: Track environmental contributions
-
-### For Judges
-- See [HACKATHON_DEMO.md](HACKATHON_DEMO.md) for detailed demo script
-- Watch our 3-minute demo video
-- Try the live app on provided devices
-
 ## 🚀 Deployment
 
 ### Development
@@ -173,34 +155,6 @@ eas submit --platform android
 ```
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment guide.
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our contributing guidelines:
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
-
-## 🙏 Acknowledgments
-
-- **Singapore Government** for Green Plan 2030 initiative
-- **OneMap Team** for location API access
-- **NEA & PUB** for environmental data APIs
-- **Firebase** for backend infrastructure
-- **React Native Community** for excellent tooling
-
-## 📞 Contact & Support
-
-- **Demo Questions**: [your-email@example.com]
-- **Technical Issues**: Create an issue on GitHub
-- **Partnership Inquiries**: [partnerships@ecoguardian.sg]
 
 ---
 
